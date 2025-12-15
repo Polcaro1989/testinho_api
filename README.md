@@ -131,6 +131,7 @@ http://localhost:3000/invoices
 Headers:Headers: Content-Type/application/json
 
 Body:
+ ```json
 {
   "id": "2657a828-df62-4a9b-8b81-f76aa2ce1b5f",
   "cnpj": "12345678901234",
@@ -143,10 +144,11 @@ Body:
   "createdAt": "2025-12-15T17:23:42.957Z",
   "updatedAt": "2025-12-15T17:23:42.957Z"
 }
-
+```
 ##### /Listar:
 GET: http://localhost:3000/invoices
 Headers: Content-Type/application/json
+```json
 [
   {
     "id": "abeb5749-b84c-4265-9107-b8a396afb1bb",
@@ -191,9 +193,11 @@ Headers: Content-Type/application/json
     "dataEmissao": null
   }
 ]
+```
 ##### List/ID:
-GET: http://localhost:3000/invoices/abeb5749-b84c-4265-9107-b8a396afb1bb
 
+GET: http://localhost:3000/invoices/abeb5749-b84c-4265-9107-b8a396afb1bb
+```json
 {
   "id": "abeb5749-b84c-4265-9107-b8a396afb1bb",
   "cnpj": "12345678901234",
@@ -208,10 +212,10 @@ GET: http://localhost:3000/invoices/abeb5749-b84c-4265-9107-b8a396afb1bb
   "numeroNF": "00847",
   "dataEmissao": "2025-12-15T14:16:40-03:00"
 }
-
+```
 ##### Cancelar:
 Post: http://localhost:3000/invoices/2657a828-df62-4a9b-8b81-f76aa2ce1b5f/cancel
-
+```json
 {
   "id": "2657a828-df62-4a9b-8b81-f76aa2ce1b5f",
   "cnpj": "12345678901234",
@@ -226,11 +230,11 @@ Post: http://localhost:3000/invoices/2657a828-df62-4a9b-8b81-f76aa2ce1b5f/cancel
   "numeroNF": null,
   "dataEmissao": null
 }
-
+```
 ##### Emitir nota:
 
 Post: http://localhost:3000/invoices/abeb5749-b84c-4265-9107-b8a396afb1bb/emit
-
+```json
 {
   "id": "abeb5749-b84c-4265-9107-b8a396afb1bb",
   "cnpj": "12345678901234",
@@ -245,3 +249,4 @@ Post: http://localhost:3000/invoices/abeb5749-b84c-4265-9107-b8a396afb1bb/emit
   "numeroNF": "00847",
   "dataEmissao": "2025-12-15T14:16:40-03:00"
 }
+```
