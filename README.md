@@ -1,6 +1,6 @@
 # API de Solicitacoes de Notas Fiscais
 
-API HTTP em Node.js/TypeScript (Express) para criar, listar, buscar, emitir e cancelar solicitacoes de Nota Fiscal. Persistencia em SQLite (arquivo) sem servidor externo de banco.
+API HTTP em Node.js/TypeScript (Express) para criar, listar, buscar, emitir e cancelar solicitacoes de Nota Fiscal. Persistencia em SQLite (arquivo) sem precisar de servidor de banco externo.
 
 ## Requisitos
 - Node.js >= 20
@@ -22,7 +22,7 @@ npm install
 npm test
 ```
 - Suite `tests/invoice.spec.ts`: cria, lista, busca, emite (sucesso e erro 400 simulado), cancela pendente e bloqueia cancelamento de emitidas.
-- Rodar teste especifico: `npm test -- --testNamePattern "texto do teste"` ou `npx jest tests/invoice.spec.ts -t "texto do teste"`.
+- Para rodar um teste especifico: `npm test -- --testNamePattern "texto do teste"` ou `npx jest tests/invoice.spec.ts -t "texto do teste"`.
 
 ## Endpoints
 Base URL: `http://localhost:3000`
@@ -48,7 +48,7 @@ Base URL: `http://localhost:3000`
   Busca uma solicitacao.
 
 - `POST /invoices/:id/emit`  
-  Emite NF chamando a API externa `https://api.drfinancas.com/testes/notas-fiscais` com header `Authorization: 87451e7c-48bc-48d1-a038-c16783dd404c`.  
+  Emite NF chamando a API externa `https://api.drfinancas.com/testes/notas-fiscais` com header `Authorization: ################################`.  
   Sucesso (200): salva `numeroNF`, `dataEmissao`, status vira `EMITIDA`.  
   Erros 400/401/500 retornam mensagens adequadas.
 
@@ -97,7 +97,7 @@ curl -X POST http://localhost:3000/invoices/{id}/cancel
 
 ## Variaveis de ambiente
 - `PORT`: porta do servidor (padrao 3000).
-- `INVOICE_DB_PATH`: caminho do arquivo SQLite (padrao `./data/invoices.db` em relacao ao cwd).
+- `INVOICE_DB_PATH`: caminho do arquivo SQLite (padrao `./data/invoices.db` em relação ao cwd).
 
 ## Passo a passo rapido (Thunder/Postman)
 - GET `http://localhost:3000/invoices`  
@@ -125,24 +125,125 @@ Se ja houver registros no banco, use `GET http://localhost:3000/invoices` para l
 - `POST /invoices/{id}/emit` para emitir
 - `POST /invoices/{id}/cancel` para cancelar se ainda estiver pendente
 
-## Diagrama de arquitetura (processo assincrono com status em tempo real)
-```
-[Cliente SPA/Mobile]
-      | (POST /acao-lenta) -> recebe jobId
-      v
-[API Gateway/Orquestrador] -- grava status inicial (jobId) --> [Status Store (Redis/DB)]
-      |                                                       ^
-      | (enqueue job)                                         |
-      v                                                       |
- [Fila/Mensageria]  -->  [Workers A | B | C (tarefas independentes)]
-                                 | (atualiza status)                 |
-                                 v                                   |
-                         [Status Store (Redis/DB)] -------------------
-                                  |
-                     [Status Streamer WS/SSE] ---> push de status para o cliente
-                                  |
-                     (fallback: GET /status/{jobId} via API)
-```
-- Cliente assina WS/SSE (ou polling) com o jobId para sempre ver o ultimo status.
-- Workers atualizam a Status Store a cada passo; TTL pode limpar registros antigos.
-- Autenticacao/autorizacao aplicam-se aos canais de status.
+# Testes atuais feitos e comfirmados:
+##### Post/Create:
+
+http://localhost:3000/invoices
+
+Headers:Headers: Content-Type/application/json
+
+Body:
+{
+  "id": "2657a828-df62-4a9b-8b81-f76aa2ce1b5f",
+  "cnpj": "12345678901234",
+  "municipio": "Sao Paulo",
+  "estado": "SP",
+  "valorServico": 1000,
+  "dataDesejadaEmissao": "2025-12-31T10:00:00.000Z",
+  "descricaoServico": "Servico de consultoria",
+  "status": "PENDENTE_EMISSAO",
+  "createdAt": "2025-12-15T17:23:42.957Z",
+  "updatedAt": "2025-12-15T17:23:42.957Z"
+}
+
+##### /Listar:
+GET: http://localhost:3000/invoices
+Headers: Content-Type/application/json
+[
+  {
+    "id": "abeb5749-b84c-4265-9107-b8a396afb1bb",
+    "cnpj": "12345678901234",
+    "municipio": "Sao Paulo",
+    "estado": "SP",
+    "valorServico": 1000,
+    "dataDesejadaEmissao": "2025-12-31T10:00:00.000Z",
+    "descricaoServico": "Servico de consultoria",
+    "status": "EMITIDA",
+    "createdAt": "2025-12-15T17:13:36.280Z",
+    "updatedAt": "2025-12-15T17:16:40.971Z",
+    "numeroNF": "00847",
+    "dataEmissao": "2025-12-15T14:16:40-03:00"
+  },
+  {
+    "id": "fc7f48b2-b2be-4c24-8ac0-7a7efea99814",
+    "cnpj": "12345678901234",
+    "municipio": "Sao Paulo",
+    "estado": "SP",
+    "valorServico": 1000,
+    "dataDesejadaEmissao": "2025-12-31T10:00:00.000Z",
+    "descricaoServico": "Servico de consultoria",
+    "status": "PENDENTE_EMISSAO",
+    "createdAt": "2025-12-15T17:23:05.863Z",
+    "updatedAt": "2025-12-15T17:23:05.863Z",
+    "numeroNF": null,
+    "dataEmissao": null
+  },
+  {
+    "id": "2657a828-df62-4a9b-8b81-f76aa2ce1b5f",
+    "cnpj": "12345678901234",
+    "municipio": "Sao Paulo",
+    "estado": "SP",
+    "valorServico": 1000,
+    "dataDesejadaEmissao": "2025-12-31T10:00:00.000Z",
+    "descricaoServico": "Servico de consultoria",
+    "status": "CANCELADA",
+    "createdAt": "2025-12-15T17:23:42.957Z",
+    "updatedAt": "2025-12-15T17:24:35.517Z",
+    "numeroNF": null,
+    "dataEmissao": null
+  }
+]
+##### List/ID:
+GET: http://localhost:3000/invoices/abeb5749-b84c-4265-9107-b8a396afb1bb
+
+{
+  "id": "abeb5749-b84c-4265-9107-b8a396afb1bb",
+  "cnpj": "12345678901234",
+  "municipio": "Sao Paulo",
+  "estado": "SP",
+  "valorServico": 1000,
+  "dataDesejadaEmissao": "2025-12-31T10:00:00.000Z",
+  "descricaoServico": "Servico de consultoria",
+  "status": "EMITIDA",
+  "createdAt": "2025-12-15T17:13:36.280Z",
+  "updatedAt": "2025-12-15T17:16:40.971Z",
+  "numeroNF": "00847",
+  "dataEmissao": "2025-12-15T14:16:40-03:00"
+}
+
+##### Cancelar:
+Post: http://localhost:3000/invoices/2657a828-df62-4a9b-8b81-f76aa2ce1b5f/cancel
+
+{
+  "id": "2657a828-df62-4a9b-8b81-f76aa2ce1b5f",
+  "cnpj": "12345678901234",
+  "municipio": "Sao Paulo",
+  "estado": "SP",
+  "valorServico": 1000,
+  "dataDesejadaEmissao": "2025-12-31T10:00:00.000Z",
+  "descricaoServico": "Servico de consultoria",
+  "status": "CANCELADA",
+  "createdAt": "2025-12-15T17:23:42.957Z",
+  "updatedAt": "2025-12-15T17:24:35.517Z",
+  "numeroNF": null,
+  "dataEmissao": null
+}
+
+##### Emitir nota:
+
+Post: http://localhost:3000/invoices/abeb5749-b84c-4265-9107-b8a396afb1bb/emit
+
+{
+  "id": "abeb5749-b84c-4265-9107-b8a396afb1bb",
+  "cnpj": "12345678901234",
+  "municipio": "Sao Paulo",
+  "estado": "SP",
+  "valorServico": 1000,
+  "dataDesejadaEmissao": "2025-12-31T10:00:00.000Z",
+  "descricaoServico": "Servico de consultoria",
+  "status": "EMITIDA",
+  "createdAt": "2025-12-15T17:13:36.280Z",
+  "updatedAt": "2025-12-15T17:16:40.971Z",
+  "numeroNF": "00847",
+  "dataEmissao": "2025-12-15T14:16:40-03:00"
+}
